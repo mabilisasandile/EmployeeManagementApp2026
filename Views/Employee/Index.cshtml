@@ -1,0 +1,152 @@
+﻿@{
+    ViewData["Title"] = "Employee Page";
+}
+@model List<Employee>
+
+<!-- Core CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/free-jqgrid/4.15.5/css/ui.jqgrid.min.css">
+
+<div class="text-center">
+    <h1 class="display-4">Employee Management</h1>
+    @* Exercise 2 - Razor *@
+    <h2>@ViewBag.PageTitle</h2>
+    <P>@ViewBag.CurrentDate</p>
+
+    <hr />
+    @* <p>@Model.EmployeeId</p>
+    <p>@Model.FirstName</p>
+    <p>@Model.LastName</p>
+    <p>@Model.Email</p>
+    <p>@Model.Department</p> *@
+
+    <!-- Exercise 7 - Client-Side Search - QstnNo. 26: Add searchText input and searchButton -->
+    <div class="mb-3">
+        <input type="text" id="searchText" class="form-control d-inline-block w-auto" placeholder="Search employees..." />
+        <button type="button" id="searchButton" class="btn btn-primary">Search</button>
+    </div>
+
+    <!-- Grid and Pager elements -->
+    <div class="mt-3">
+        <table id="grid1" class="table table-striped table-bordered nowrap" style="border-collapse:collapse;border-spacing:0;width:100%;"></table>
+        <div id="pager"></div>
+    </div>
+
+    <hr />
+    @* <p><a href="@Url.Action("Create", "Employee")" class="btn btn-success">Add New Employee</a></p> *@
+    <p><a asp-action="Create" asp-controller="Employee" class="btn btn-success">Add New Employee</a></p>
+    <hr />
+
+    @Html.AntiForgeryToken()
+
+    <table class="table table-striped table-bordered nowrap" style="border-collapse:collapse;border-spacing:0;width:100%;">
+        <thead>
+            <tr>
+                <th>Employee Id</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.EmployeeId</td>
+                    <td>@item.FirstName</td>
+                    <td>@item.LastName</td>
+                    <td>@item.Email</td>
+                    <td>@item.Department</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.EmployeeId" class="btn btn-primary btn-sm">Edit</a>
+                        <a href="#" data-employee-id="@item.EmployeeId" class="btn btn-danger btn-sm delete-btn">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+
+</div>
+
+@section Scripts {
+    <!-- 1. Full, valid CDN URLs for Free jqGrid -->
+    <!-- Core JS (includes English locale by default) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/free-jqgrid/4.15.5/jquery.jqgrid.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // 2. Initialize the grid ONCE when the page loads
+            $("#grid1").jqGrid({
+                url: '@Url.Action("Search", "Employee")',
+                datatype: "json",
+                mtype: "GET",
+                colModel: [
+                    { name: "employeeId", label: "ID", key: true, width: 60 },
+                    { name: "firstName", label: "First Name", width: 150 },
+                    { name: "lastName", label: "Last Name", width: 150 },
+                    { name: "email", label: "Email", width: 200 },
+                    { name: "department", label: "Department", width: 150 }
+                ],
+                jsonReader: {
+                    repeatitems: false,
+                    id: "mployeeId"        // Explicitly maps the row ID
+                },
+                pager: "#pager",
+                rowNum: 20,
+                viewrecords: true,
+                height: "auto"
+            });
+
+            // 3. On search button click, update the URL with the search term and reload
+            $("#searchButton").click(function (evt) {
+                evt.preventDefault();
+
+                // Qstn 27: Use jQuery .val() to read the term
+                var term = $("#searchText").val();
+
+                // Qstn 28: console.log the term on click
+                console.log(term);
+
+                var url = '@Url.Action("Search", "Employee")' + "?term=" + encodeURIComponent(term);
+
+                $("#grid1")
+                    .jqGrid("setGridParam", {
+                        url: url,
+                        datatype: "json"
+                    })
+                    .trigger("reloadGrid", [{ page: 1 }]);
+            });
+
+            //Delete Employee button click event handler
+            $(document).on("click", ".delete-btn", function (evt) {
+                evt.preventDefault();
+
+                var $button = $(this);
+                var employeeId = $button.data("employee-id");
+                var token = $('input[name="__RequestVerificationToken"]').val();
+
+                if (confirm("Are you sure you want to delete this employee?")) {
+                    $.ajax({
+                        url: '@Url.Action("Delete", "Employee")',
+                        type: "POST",
+                        data: {
+                            id: employeeId,
+                            __RequestVerificationToken: token
+                        },
+                        success: function () {
+                            alert("Employee deleted successfully.");
+                            $button.closest("tr").remove();
+                            $("#grid1").trigger("reloadGrid");
+                        },
+                        error: function (xhr) {
+                            alert("Failed to delete employee: " + xhr.statusText);
+                        }
+                    });
+                }
+            });
+
+        });
+    </script>
+}
