@@ -1,5 +1,6 @@
 ﻿using EmployeeManagementApp.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Runtime.CompilerServices;
@@ -92,18 +93,48 @@ namespace EmployeeManagementApp.Controllers
             return View(employees);
         }
 
-        public JsonResult Search(string term)
+        [HttpGet]
+        public IActionResult SearchView()
+        {
+            List<string> departments = new List<string>();
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+
+                // Load distinct departments for the dropdown
+                string deptSql = "SELECT DISTINCT Department FROM Employees WHERE Department IS NOT NULL ORDER BY Department";
+                using (SqlCommand deptCommand = new SqlCommand(deptSql, connection))
+                using (SqlDataReader deptReader = deptCommand.ExecuteReader())
+                {
+                    while (deptReader.Read())
+                    {
+                        departments.Add(deptReader["Department"].ToString());
+                    }
+                }
+            }
+
+            ViewBag.Departments = new SelectList(departments);
+
+            return View();
+        }
+
+        [HttpGet]
+        public JsonResult Search(string term, string? department)
         {
             List<Employee> employees = new List<Employee>();
+
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
                 string sql = @"SELECT EmployeeId, FirstName, LastName, Email, Department 
                                FROM Employees 
-                               WHERE FirstName LIKE @Term OR LastName LIKE @Term";
+                               WHERE FirstName LIKE @Term OR LastName LIKE @Term AND Department = @Department";
                 using (SqlCommand command = new SqlCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@Term", "%" + term + "%");
+                    command.Parameters.AddWithValue("@Department", "%" + department + "%");
+
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -119,8 +150,17 @@ namespace EmployeeManagementApp.Controllers
                         }
                     }
                 }
+
             }
+
             return Json(employees);
+            //return Json(new
+            //{
+            //    page = 1,
+            //    total = 1,
+            //    records = employees.Count,
+            //    rows = employees
+            //});
         }
 
         [HttpGet]
